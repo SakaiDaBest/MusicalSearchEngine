@@ -15,10 +15,6 @@ struct SearchDB {
 
 SearchDB readCSV(const string& filename) {
     SearchDB db;
-    vector<vector<string>> data;
-    unordered_map<string, vector<int>> artistIndex;
-    unordered_map<string, vector<int>> songIndex;
-    unordered_map<string, vector<int>> albumIndex;
 
     ifstream file(filename);
     
