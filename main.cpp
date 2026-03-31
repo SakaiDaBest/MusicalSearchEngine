@@ -3,6 +3,8 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <climits>
+#include <algorithm>
 // #include <unordered_map>
 using namespace std;
 template <class S, class T>
@@ -103,6 +105,34 @@ public:
     return default_value;
   }
 };
+// LEVENSHTEIN DISTANCE (DID YOU MEAN?)
+int levenshteinDist(string word1, string word2) {
+    int size1 = word1.size();
+    int size2 = word2.size();
+
+    vector<vector<int>> verif(size1 + 1, vector<int>(size2 + 1));
+
+    if (size1 == 0) return size2;
+    if (size2 == 0) return size1;
+
+    for (int i = 0; i <= size1; i++)
+        verif[i][0] = i;
+    for (int j = 0; j <= size2; j++)
+        verif[0][j] = j;
+
+    for (int i = 1; i <= size1; i++) {
+        for (int j = 1; j <= size2; j++) {
+            int cost = (word2[j - 1] == word1[i - 1]) ? 0 : 1;
+
+            verif[i][j] = min(
+                min(verif[i - 1][j] + 1, verif[i][j - 1] + 1),
+                verif[i - 1][j - 1] + cost
+            );
+        }
+    }
+
+    return verif[size1][size2];
+}
 struct TrieNode {
   TrieNode *children[26]; // 26 pointers
   bool isEnd;             // check if this node is the end of a word
@@ -274,6 +304,28 @@ vector<int> smartSearch(SearchDB &db, string query) {
 
   return multiKeywordSearch(db, query);
 }
+//Levenshetein Search
+vector<int> levenshteinSearch(SearchDB &db, string query, int threshold = 2) {
+  vector<int> result;
+
+  for (int i = 0; i < db.data.size(); i++) {
+    string artist = db.data[i][2];
+    string album = db.data[i][3];
+    string song = db.data[i][4];
+
+    int d1 = levenshteinDist(query, artist);
+    int d2 = levenshteinDist(query, album);
+    int d3 = levenshteinDist(query, song);
+
+    int d = min(d1, min(d2, d3));
+
+    if (d <= threshold) {
+      result.push_back(i);
+    }
+  }
+
+  return result;
+}
 int main() {
   SearchDB db = readCSV("dataset.csv");
   string input;
@@ -306,6 +358,11 @@ int main() {
 
   vector<int> results = smartSearch(db, query);
 
+  if (results.empty()) {
+  cout << "\nNo exact match found. Did you mean??...\n";
+  results = levenshteinSearch(db, query, 2);
+}
+
   cout << "\nSearch Results: \n";
   for (int i : results) {
     for (int j = 0; j < db.data[i].size(); j++) {
@@ -325,5 +382,16 @@ int main() {
   //   }
   // }
 
+  // for (int i = 0; i < db.data.size(); i++) {
+  //   string artist = db.data[i][2];
+  //   string query = "Taylr Swft"; // misspelled input
+  //
+  //   if (levenshteinDist(query, artist) <= 2) {
+  //     for (const auto &cell : db.data[i]) {
+  //       cout << cell << "\t";
+  //     }
+  //     cout << endl;
+  //   }
+  // }
   return 0;
 }
