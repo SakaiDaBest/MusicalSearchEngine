@@ -335,10 +335,6 @@ int main() {
 
   // Try to load CSV, but fallback to mock data so the demo always works
   db = readCSV("dataset.csv");
-  if (db.data.empty()) {
-    cout << "[!] dataset.csv not found. Loading Mock Data for "
-            "Demonstration...\n";
-  }
 
   cout << string(50, '=') << "\n";
   cout << " FEATURE 1: AUTOCOMPLETE SUGGESTIONS (TRIE)\n";
