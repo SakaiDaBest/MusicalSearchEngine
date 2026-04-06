@@ -330,10 +330,54 @@ vector<int> levenshteinSearch(SearchDB &db, string query, int threshold = 2) {
   return result;
 }
 
+void merge(vector<int> &indices, int left, int mid, int right, SearchDB &db,
+           int col, bool ascending) {
+  vector<int> L(indices.begin() + left, indices.begin() + mid + 1);
+  vector<int> R(indices.begin() + mid + 1, indices.begin() + right + 1);
+
+  int i = 0, j = 0, k = left;
+  while (i < L.size() && j < R.size()) {
+    string a = db.data[L[i]][col];
+    string b = db.data[R[j]][col];
+    bool takeLeft = ascending ? (a <= b) : (a >= b);
+    if (takeLeft)
+      indices[k++] = L[i++];
+    else
+      indices[k++] = R[j++];
+  }
+  while (i < L.size())
+    indices[k++] = L[i++];
+  while (j < R.size())
+    indices[k++] = R[j++];
+}
+
+void mergeSort(vector<int> &indices, int left, int right, SearchDB &db, int col,
+               bool ascending) {
+  if (left >= right)
+    return;
+  int mid = (left + right) / 2;
+  mergeSort(indices, left, mid, db, col, ascending);
+  mergeSort(indices, mid + 1, right, db, col, ascending);
+  merge(indices, left, mid, right, db, col, ascending);
+}
+
+// LOOK AT THIS \/
+// col: 2=artist, 3=album, 4=song
+void sortResults(vector<int> &indices, SearchDB &db, int col = 2,
+                 bool ascending = true) {
+  if (indices.empty())
+    return;
+  mergeSort(indices, 0, indices.size() - 1, db, col, ascending);
+}
+
+// Example usage
+// sortResults(results, db, 2, true);   // A-Z by artist
+//  sortResults(results, db, 4, false);  // Z-A by song title
+//  sortResults(results, db, 3, true);   // A-Z by album
+
 int main() {
   SearchDB db;
 
-  // Try to load CSV, but fallback to mock data so the demo always works
   db = readCSV("dataset.csv");
 
   cout << string(50, '=') << "\n";
