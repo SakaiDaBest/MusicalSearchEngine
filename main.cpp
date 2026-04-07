@@ -244,13 +244,15 @@ SearchDB readCSV(const string &filename) {
 
     db.data.push_back(row);
 
-    string artist = row[2];
-    string song = row[4];
-    string album = row[3];
+    string artist = row[1];
+    string album = row[2];
+    string song = row[3];
     db.artistIndex[artist].push_back(currentLine);
     db.songIndex[song].push_back(currentLine);
     db.albumIndex[album].push_back(currentLine);
     db.artistTrie.insert(artist);
+    db.songTrie.insert(song);
+    db.albumTrie.insert(album);
 
     currentLine++;
   }
@@ -312,9 +314,9 @@ vector<int> levenshteinSearch(SearchDB &db, string query, int threshold = 2) {
   vector<int> result;
 
   for (int i = 0; i < db.data.size(); i++) {
-    string artist = db.data[i][2];
-    string album = db.data[i][3];
-    string song = db.data[i][4];
+    string artist = db.data[i][1];
+    string album = db.data[i][2];
+    string song = db.data[i][3];
 
     int d1 = levenshteinDist(query, artist);
     int d2 = levenshteinDist(query, album);
@@ -362,7 +364,7 @@ void mergeSort(vector<int> &indices, int left, int right, SearchDB &db, int col,
 }
 
 // LOOK AT THIS \/
-// col: 2=artist, 3=album, 4=song
+// col: 1=artist, 2=album, 3=song
 void sortResults(vector<int> &indices, SearchDB &db, int col = 2,
                  bool ascending = true) {
   if (indices.empty())
@@ -375,81 +377,238 @@ void sortResults(vector<int> &indices, SearchDB &db, int col = 2,
 //  sortResults(results, db, 4, false);  // Z-A by song title
 //  sortResults(results, db, 3, true);   // A-Z by album
 
+void edit(SearchDB &db) {
+  cout << "======= Edit Mode =======" << endl;
+  cout << "Enter the song name that you want to edit: ";
+  string songName;
+  getline(cin, songName);
+
+  // Bug 2 fix: use find() before operator[] to avoid phantom insertion
+  if (!db.songIndex.find(songName)) {
+    cout << "Song not found." << endl;
+    return;
+  }
+
+  vector<int> matchingRows = db.songIndex[songName];
+  int selectedRow = -1;
+
+  if (matchingRows.size() > 1) {
+    cout << "Multiple songs found with that name. Please select one:" << endl;
+    for (int i = 0; i < (int)matchingRows.size(); i++) {
+      int r = matchingRows[i];
+      cout << i + 1 << ". Song: " << db.data[r][3] << "\n";
+      cout << "   Artist: " << db.data[r][1] << "\n";
+      cout << "   Album: " << db.data[r][2] << "\n";
+    }
+    cout << "Enter the number of the song you want to edit: ";
+    int choiceE1;
+    cin >> choiceE1;
+    cin.ignore(); // Bug 1 fix: ignore leftover newline after cin >>
+
+    if (choiceE1 < 1 || choiceE1 > (int)matchingRows.size()) {
+      cout << "Invalid choice. Exiting edit mode." << endl;
+      return;
+    }
+    selectedRow = matchingRows[choiceE1 - 1];
+  } else if (matchingRows.size() == 1) {
+    selectedRow = matchingRows[0];
+  }
+
+  // Bug 3 fix: guard against no match
+  if (selectedRow == -1) {
+    cout << "No valid song selected." << endl;
+    return;
+  }
+
+  cout << "== What do you want to edit? ==" << endl;
+  cout << "1. Song\n2. Artist\n3. Album\n";
+  cout << "Enter your choice: ";
+  int choiceE2;
+  cin >> choiceE2;
+  cin.ignore();
+
+  if (choiceE2 < 1 || choiceE2 > 3) {
+    cout << "Invalid choice. Exiting..." << endl;
+    return;
+  }
+
+  if (choiceE2 == 1) {
+    string oldSong = db.data[selectedRow][4];
+    cout << "Enter the new song name: ";
+    string newSong;
+    getline(cin, newSong);
+
+    db.data[selectedRow][4] = newSong;
+
+    // Bug 4 fix: remove old index row reference, add new one
+    vector<int> &oldVec = db.songIndex[oldSong];
+    oldVec.erase(remove(oldVec.begin(), oldVec.end(), selectedRow),
+                 oldVec.end());
+    if (oldVec.empty())
+      db.songIndex.erase(oldSong);
+
+    db.songIndex[newSong].push_back(selectedRow);
+
+  } else if (choiceE2 == 2) {
+    string oldArtist = db.data[selectedRow][2];
+    cout << "Enter the new artist name: ";
+    string newArtist;
+    getline(cin, newArtist);
+
+    db.data[selectedRow][2] = newArtist;
+
+    vector<int> &oldVec = db.artistIndex[oldArtist];
+    oldVec.erase(remove(oldVec.begin(), oldVec.end(), selectedRow),
+                 oldVec.end());
+    if (oldVec.empty())
+      db.artistIndex.erase(oldArtist);
+
+    db.artistIndex[newArtist].push_back(selectedRow);
+
+  } else if (choiceE2 == 3) {
+    string oldAlbum = db.data[selectedRow][3];
+    cout << "Enter the new album name: ";
+    string newAlbum;
+    getline(cin, newAlbum);
+
+    db.data[selectedRow][3] = newAlbum;
+
+    vector<int> &oldVec = db.albumIndex[oldAlbum];
+    oldVec.erase(remove(oldVec.begin(), oldVec.end(), selectedRow),
+                 oldVec.end());
+    if (oldVec.empty())
+      db.albumIndex.erase(oldAlbum);
+
+    db.albumIndex[newAlbum].push_back(selectedRow);
+  }
+
+  cout << "Edit successful!" << endl;
+}
+
 int main() {
   SearchDB db;
 
   db = readCSV("dataset.csv");
-
-  cout << string(50, '=') << "\n";
-  cout << " FEATURE 1: AUTOCOMPLETE SUGGESTIONS (TRIE)\n";
-  cout << string(50, '=') << "\n";
-
-  // Example 1: User starts typing "Ta" for an artist
-  string prefix = "Ta";
-  cout << "User is typing artist name: '" << prefix << "'\n";
-
-  vector<string> suggestions = db.artistTrie.autocomplete(prefix);
-
-  if (suggestions.empty()) {
-    cout << "No suggestions found.\n";
-  } else {
-    cout << "Autocomplete Suggestions:\n";
-    for (const auto &s : suggestions) {
-      cout << " -> " << s << "\n";
-    }
+  if (db.data.empty()) {
+    cout << "Error: dataset cannot be loaded." << endl;
+    return 1;
   }
+  int choice;
+  while (true) {
+    cout << "Dataset is loaded successfully! It's ready to use." << endl;
+    cout << "======= Welcome to Loz Music Search Engine =======" << endl;
+    cout << "1. Search Song/Artist/Album" << endl;
+    cout << "2. Add Song/Artist/Album" << endl;
+    cout << "3. Delete Song/Artist/Album" << endl;
+    cout << "4. Edit Song/Artist/Album" << endl;
+    cout << "5. Exit..." << endl;
+    cout << "Enter your choice: ";
+    cin >> choice;
+    cin.ignore();
 
-  cout << "\n" << string(50, '=') << "\n";
-  cout << " FEATURE 2: DID YOU MEAN? (LEVENSHTEIN)\n";
-  cout << string(50, '=') << "\n";
-
-  // Example 2: User makes a typo while searching
-  string typoQuery = "Ed Sheran"; // Missing an 'e'
-  cout << "User hit 'Enter' searching for: '" << typoQuery << "'\n";
-
-  // First, check if exact match exists using your smartSearch
-  vector<int> results = smartSearch(db, typoQuery);
-
-  if (results.empty()) {
-    cout << "\nNo exact match found. Searching for 'Did you mean?' "
-            "alternatives...\n";
-
-    // Use Levenshtein to find close matches (Threshold of 2 edits)
-    results = levenshteinSearch(db, typoQuery, 2);
-
-    if (results.empty()) {
-      cout << "No close matches found.\n";
-    } else {
-      cout << "Did you mean??...\n";
-      for (int i : results) {
-        // Print out the Artist, Album, and Song for the corrected result
-        cout << " -> Artist: " << db.data[i][2] << " | Album: " << db.data[i][3]
-             << " | Song: " << db.data[i][4] << "\n";
-      }
+    switch (choice) {
+    case 1: {
+      // call search function
+      break;
     }
-  } else {
-    cout << "Exact match found!\n";
-  }
-
-  cout << "\n" << string(50, '=') << "\n";
-  cout << " FEATURE 3: ANOTHER TYPO EXAMPLE\n";
-  cout << string(50, '=') << "\n";
-
-  string typoQuery2 = "Taylr Swft"; // Missing 'o' and 'i'
-  cout << "User searched for: '" << typoQuery2 << "'\n";
-
-  results = smartSearch(db, typoQuery2);
-  if (results.empty()) {
-    results = levenshteinSearch(
-        db, typoQuery2, 3); // Slightly higher threshold for 2 missing letters
-    if (!results.empty()) {
-      cout << "Did you mean??...\n";
-      for (int i : results) {
-        cout << " -> Artist: " << db.data[i][2] << " | Album: " << db.data[i][3]
-             << " | Song: " << db.data[i][4] << "\n";
-      }
+    case 2:
+      // call add function
+      break;
+    case 3:
+      // call delete function
+      break;
+    case 4:
+      edit(db);
+      break;
+    case 5:
+      cout << "Exiting... Goodbye!" << endl;
+      return 0;
+    default:
+      cout << "Invalid choice. Please try again." << endl;
     }
   }
 
   return 0;
 }
+
+// int main() {
+//   SearchDB db;
+//
+//   db = readCSV("dataset.csv");
+//
+//   cout << string(50, '=') << "\n";
+//   cout << " FEATURE 1: AUTOCOMPLETE SUGGESTIONS (TRIE)\n";
+//   cout << string(50, '=') << "\n";
+//
+//   // Example 1: User starts typing "Ta" for an artist
+//   string prefix = "Ta";
+//   cout << "User is typing artist name: '" << prefix << "'\n";
+//
+//   vector<string> suggestions = db.artistTrie.autocomplete(prefix);
+//
+//   if (suggestions.empty()) {
+//     cout << "No suggestions found.\n";
+//   } else {
+//     cout << "Autocomplete Suggestions:\n";
+//     for (const auto &s : suggestions) {
+//       cout << " -> " << s << "\n";
+//     }
+//   }
+//
+//   cout << "\n" << string(50, '=') << "\n";
+//   cout << " FEATURE 2: DID YOU MEAN? (LEVENSHTEIN)\n";
+//   cout << string(50, '=') << "\n";
+//
+//   // Example 2: User makes a typo while searching
+//   string typoQuery = "Ed Sheran"; // Missing an 'e'
+//   cout << "User hit 'Enter' searching for: '" << typoQuery << "'\n";
+//
+//   // First, check if exact match exists using your smartSearch
+//   vector<int> results = smartSearch(db, typoQuery);
+//
+//   if (results.empty()) {
+//     cout << "\nNo exact match found. Searching for 'Did you mean?' "
+//             "alternatives...\n";
+//
+//     // Use Levenshtein to find close matches (Threshold of 2 edits)
+//     results = levenshteinSearch(db, typoQuery, 2);
+//
+//     if (results.empty()) {
+//       cout << "No close matches found.\n";
+//     } else {
+//       cout << "Did you mean??...\n";
+//       for (int i : results) {
+//         // Print out the Artist, Album, and Song for the corrected result
+//         cout << " -> Artist: " << db.data[i][2] << " | Album: " <<
+//         db.data[i][3]
+//              << " | Song: " << db.data[i][4] << "\n";
+//       }
+//     }
+//   } else {
+//     cout << "Exact match found!\n";
+//   }
+//
+//   cout << "\n" << string(50, '=') << "\n";
+//   cout << " FEATURE 3: ANOTHER TYPO EXAMPLE\n";
+//   cout << string(50, '=') << "\n";
+//
+//   string typoQuery2 = "Taylr Swft"; // Missing 'o' and 'i'
+//   cout << "User searched for: '" << typoQuery2 << "'\n";
+//
+//   results = smartSearch(db, typoQuery2);
+//   if (results.empty()) {
+//     results = levenshteinSearch(
+//         db, typoQuery2, 3); // Slightly higher threshold for 2 missing
+//         letters
+//     if (!results.empty()) {
+//       cout << "Did you mean??...\n";
+//       for (int i : results) {
+//         cout << " -> Artist: " << db.data[i][2] << " | Album: " <<
+//         db.data[i][3]
+//              << " | Song: " << db.data[i][4] << "\n";
+//       }
+//     }
+//   }
+//
+//   return 0;
+// }
