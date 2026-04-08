@@ -204,6 +204,37 @@ public:
     dfs(node, result);     // ex:prefix ca then find all words starting from ca
     return result;
   }
+
+  bool removeThese(TrieNode *node, string word, int depth) {
+    if (!node)
+      return false;
+    if (depth == (int)word.size()) {
+      if (!node->isEnd)
+        return false;
+      node->isEnd = false;
+      node->word = "";
+      for (int i = 0; i < 26; i++)
+        if (node->children[i] != NULL)
+          return false;
+      return true;
+    }
+    int index = tolower(word[depth]) - 'a';
+    if (index < 0 || index >= 26)
+      return false; // guard non-alpha chars
+    if (removeThese(node->children[index], word, depth + 1)) {
+      delete node->children[index];
+      node->children[index] = NULL;
+      if (node->isEnd)
+        return false;
+      for (int i = 0; i < 26; i++)
+        if (node->children[i] != NULL)
+          return false;
+      return true;
+    }
+    return false;
+  }
+
+  void remove(string word) { removeThese(root, word, 0); }
 };
 
 struct SearchDB {
@@ -485,6 +516,208 @@ void edit(SearchDB &db) {
   cout << "Edit successful!" << endl;
 }
 
+void deleteArtist(SearchDB &db) {
+  cout << "Enter the artist name to delete: ";
+  string artist;
+  getline(cin, artist);
+
+  if (!db.artistIndex.find(artist)) {
+    cout << "Artist not found.\n";
+    return;
+  }
+
+  vector<int> rows = db.artistIndex[artist];
+  vector<int> validRows;
+
+  cout << "\nSongs by this artist:\n";
+  for (int i : rows) {
+    if (db.data[i][1] == "DELETED")
+      continue;
+    cout << "  - " << db.data[i][3] << " (Album: " << db.data[i][2] << ")\n";
+    validRows.push_back(i);
+  }
+
+  if (validRows.empty()) {
+    cout << "No valid entries found.\n";
+    return;
+  }
+
+  cout << "Confirm delete ALL songs by \"" << artist << "\"? (yes/no): ";
+  string confirm;
+  cin >> confirm;
+  cin.ignore();
+
+  if (confirm != "yes") {
+    cout << "Delete cancelled.\n";
+    return;
+  }
+
+  for (int i : validRows) {
+    string song = db.data[i][3];  // Fix: was [4]
+    string album = db.data[i][2]; // Fix: was [3]
+
+    db.data[i][1] = "DELETED";
+    db.data[i][3] = "DELETED";
+
+    // Remove this row from songIndex
+    vector<int> &sv = db.songIndex[song];
+    sv.erase(remove(sv.begin(), sv.end(), i), sv.end());
+    if (sv.empty())
+      db.songIndex.erase(song);
+
+    // Fix 5: also remove from albumIndex
+    vector<int> &av = db.albumIndex[album];
+    av.erase(remove(av.begin(), av.end(), i), av.end());
+    if (av.empty())
+      db.albumIndex.erase(album);
+  }
+
+  db.artistIndex.erase(artist);
+  db.artistTrie.remove(artist);
+
+  cout << "Artist deleted successfully.\n";
+}
+
+void deleteSong(SearchDB &db) {
+  cout << "Enter the song name to delete: ";
+  string song;
+  getline(cin, song);
+
+  if (!db.songIndex.find(song)) {
+    cout << "Song not found.\n";
+    return;
+  }
+
+  vector<int> rows = db.songIndex[song];
+  vector<int> validRows;
+
+  cout << "\nSearch results:\n";
+  for (int i : rows) {
+    if (db.data[i][3] == "DELETED")
+      continue;                                    // Fix: was [4]
+    cout << i + 1 << ". \"" << db.data[i][3]       // Fix: was [4]
+         << "\" by " << db.data[i][1]              // Fix: was [2]
+         << " (Album: " << db.data[i][2] << ")\n"; // Fix: was [3]
+    validRows.push_back(i);
+  }
+
+  if (validRows.empty()) {
+    cout << "No valid songs found.\n";
+    return;
+  }
+
+  int selected = -1;
+  if (validRows.size() == 1) {
+    selected = validRows[0];
+  } else {
+    cout << "Enter the number of the song to delete: ";
+    int pick;
+    cin >> pick;
+    cin.ignore();
+    if (pick < 1 || pick > (int)validRows.size()) {
+      cout << "Invalid choice.\n";
+      return;
+    }
+    selected = validRows[pick - 1];
+  }
+
+  cout << "Confirm delete \"" << db.data[selected][3] << "\"? (yes/no): ";
+  string confirm;
+  cin >> confirm;
+  cin.ignore();
+
+  if (confirm != "yes") {
+    cout << "Delete cancelled.\n";
+    return;
+  }
+
+  string album = db.data[selected][2];  // Fix: was [3]
+  string artist = db.data[selected][1]; // Fix: was [2]
+
+  db.data[selected][3] = "DELETED"; // Fix: was [4]
+
+  vector<int> &sv = db.songIndex[song];
+  sv.erase(remove(sv.begin(), sv.end(), selected), sv.end());
+  if (sv.empty())
+    db.songIndex.erase(song);
+
+  // Fix 5: also clean up albumIndex and artistIndex for this row
+  vector<int> &av = db.albumIndex[album];
+  av.erase(remove(av.begin(), av.end(), selected), av.end());
+  if (av.empty())
+    db.albumIndex.erase(album);
+
+  vector<int> &arv = db.artistIndex[artist];
+  arv.erase(remove(arv.begin(), arv.end(), selected), arv.end());
+  if (arv.empty())
+    db.artistIndex.erase(artist);
+
+  db.songTrie.remove(song);
+
+  cout << "Song deleted successfully.\n";
+}
+
+void deleteAlbum(SearchDB &db) {
+  cout << "Enter the album name to delete: ";
+  string album;
+  getline(cin, album);
+
+  if (!db.albumIndex.find(album)) {
+    cout << "Album not found.\n";
+    return;
+  }
+
+  vector<int> rows = db.albumIndex[album];
+  vector<int> validRows;
+
+  cout << "\nSongs in this album:\n";
+  for (int i : rows) {
+    if (db.data[i][2] == "DELETED")
+      continue;                              // Fix: was [3]
+    cout << "  - " << db.data[i][3]          // Fix: was [4]
+         << " by " << db.data[i][1] << "\n"; // Fix: was [2]
+    validRows.push_back(i);
+  }
+
+  if (validRows.empty()) {
+    cout << "No valid entries found.\n";
+    return;
+  }
+
+  cout << "Confirm delete ALL songs in album \"" << album << "\"? (yes/no): ";
+  string confirm;
+  cin >> confirm;
+  cin.ignore();
+
+  if (confirm != "yes") {
+    cout << "Delete cancelled.\n";
+    return;
+  }
+
+  for (int i : validRows) {
+    string song = db.data[i][3];   // Fix: was [4]
+    string artist = db.data[i][1]; // Fix: was [2]
+
+    db.data[i][2] = "DELETED"; // Fix: was [3]
+    db.data[i][3] = "DELETED"; // Fix: was [4]
+
+    vector<int> &sv = db.songIndex[song];
+    sv.erase(remove(sv.begin(), sv.end(), i), sv.end());
+    if (sv.empty())
+      db.songIndex.erase(song);
+
+    // Fix 5: also remove from artistIndex
+    vector<int> &arv = db.artistIndex[artist];
+    arv.erase(remove(arv.begin(), arv.end(), i), arv.end());
+    if (arv.empty())
+      db.artistIndex.erase(artist);
+  }
+
+  db.albumIndex.erase(album);
+  db.albumTrie.remove(album);
+
+  cout << "Album deleted successfully.\n";
+}
 int main() {
   SearchDB db;
 
@@ -514,9 +747,25 @@ int main() {
     case 2:
       // call add function
       break;
-    case 3:
-      // call delete function
+    case 3: {
+      // Fix 2: delete dispatch is now properly inside case 3
+      cout << "What do you want to delete? (song/album/artist): ";
+      string delType;
+      cin >> delType;
+      cin.ignore();
+      for (char &c : delType)
+        c = tolower(c);
+
+      if (delType == "song")
+        deleteSong(db);
+      else if (delType == "artist")
+        deleteArtist(db);
+      else if (delType == "album")
+        deleteAlbum(db);
+      else
+        cout << "Invalid type.\n";
       break;
+    } break;
     case 4:
       edit(db);
       break;
