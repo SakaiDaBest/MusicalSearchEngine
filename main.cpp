@@ -720,7 +720,7 @@ int main() {
   }
   int choice;
   while (true) {
-    cout << "Dataset is loaded successfully! It's ready to use." << endl;
+    cout << "\nDataset is loaded successfully! It's ready to use." << endl;
     cout << "======= Welcome to Loz Music Search Engine =======" << endl;
     cout << "1. Search Song/Artist/Album" << endl;
     cout << "2. Add Song/Artist/Album" << endl;
@@ -733,11 +733,104 @@ int main() {
 
     switch (choice) {
     case 1: {
-      // call search function
+      cout << "======= Search Mode =======" << endl;
+      cout << "Enter your search query: ";
+      string query;
+      getline(cin, query);
+
+      // 1. Autocomplete Suggestions (using Trie)
+      vector<string> suggestions = db.artistTrie.autocomplete(query);
+      if (!suggestions.empty()) {
+        cout << "\n[Tip] Artist Autocomplete Suggestions:" << endl;
+        int c = 0;
+        for (const auto &s : suggestions) {
+          cout << " -> " << s << endl;
+          c++;
+          if (c == 5 && suggestions.size() > c) {
+            cout << "\nThere are " << suggestions.size() - c
+                 << " more suggestions that are hidden" << endl;
+            break;
+          }
+        }
+      }
+
+      // 2. Exact & Multi-Keyword Search
+      vector<int> results = smartSearch(db, query);
+
+      // 3. Did you mean? (Levenshtein search fallback)
+      if (results.empty()) {
+        cout << "\nNo exact match found. Searching for 'Did you mean?' "
+                "alternatives..."
+             << endl;
+        results = levenshteinSearch(db, query, 2); // Threshold set to 2 edits
+
+        if (results.empty()) {
+          cout << "No close matches found either.\n" << endl;
+          break; // Return to main menu
+        } else {
+          cout << "Did you mean?..." << endl;
+        }
+      } else {
+        cout << "\nMatch(es) found!" << endl;
+      }
+
+      // Print the unsorted results
+      cout << "\n--- Search Results ---" << endl;
+      for (int i = 0; i < (int)results.size(); i++) {
+        int r = results[i];
+        cout << i + 1 << ". Song: " << db.data[r][3]
+             << " | Artist: " << db.data[r][1] << " | Album: " << db.data[r][2]
+             << endl;
+        if (i == 5 && results.size() > i) {
+          cout << "\nThere are " << results.size() - i
+               << " more 'Did You Mean?' that are hidden" << endl;
+          break;
+        }
+      }
+
+      // 4. Sorting Functionality
+      if (!results.empty()) {
+        cout << "\nDo you want to sort these results? (y/n): ";
+        string sortChoice;
+        getline(cin, sortChoice);
+
+        if (sortChoice == "y" || sortChoice == "Y") {
+          cout << "Sort by (1=Artist, 2=Album, 3=Song): ";
+          int colChoice;
+          cin >> colChoice;
+
+          cout << "Order (1=Ascending A-Z, 2=Descending Z-A): ";
+          int orderChoice;
+          cin >> orderChoice;
+          cin.ignore(); // Clear the newline character from the buffer
+
+          // Map the user's choice to the correct column index based on readCSV
+          int col = 3; // Default to Song
+          if (colChoice == 1)
+            col = 1;
+          else if (colChoice == 2)
+            col = 2;
+
+          bool ascending = (orderChoice == 1);
+
+          // Call your custom Merge Sort
+          sortResults(results, db, col, ascending);
+
+          // Print the sorted results
+          cout << "\n--- Sorted Results ---" << endl;
+          for (int i = 0; i < (int)results.size(); i++) {
+            int r = results[i];
+            cout << i + 1 << ". Song: " << db.data[r][3]
+                 << " | Artist: " << db.data[r][1]
+                 << " | Album: " << db.data[r][2] << endl;
+          }
+        }
+      }
       break;
     }
     case 2:
       // call add function
+      cout << "Add feature coming soon..." << endl;
       break;
     case 3: {
       cout << "What do you want to delete? (song/album/artist): ";
@@ -756,7 +849,7 @@ int main() {
       else
         cout << "Invalid type.\n";
       break;
-    } break;
+    }
     case 4:
       edit(db);
       break;
@@ -770,7 +863,6 @@ int main() {
 
   return 0;
 }
-
 // int main() {
 //   SearchDB db;
 //
