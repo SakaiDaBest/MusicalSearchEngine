@@ -731,38 +731,42 @@ void deleteAlbum(SearchDB &db) {
   saveToCSV("dataset.csv", db);
   cout << "Album deleted successfully.\n";
 }
-//Check------------------------------------------
-//                                              |
-//                                              V
-//=====================================ADD SONG==================================================================
+// Check------------------------------------------
+//                                               |
+//                                               V
+//=====================================ADD
+// SONG==================================================================
 void addSong(SearchDB &db) {
-    cout << "======= Add Song =======" << endl;
+  cout << "======= Add Song =======" << endl;
 
-    string artist, album, song;
+  string artist, album, song, genre;
 
-    cout << "Enter artist name: ";
-    getline(cin, artist);
+  cout << "Enter artist name: ";
+  getline(cin, artist);
 
-    cout << "Enter album name: ";
-    getline(cin, album);
+  cout << "Enter album name: ";
+  getline(cin, album);
 
-    cout << "Enter song name: ";
-    getline(cin, song);
+  cout << "Enter song name: ";
+  getline(cin, song);
 
-    int newIndex = db.data.size();
-    string newId = to_string(newIndex);  
+  cout << "Enter genre name: ";
+  getline(cin, genre);
 
-    vector<string> newRow = {newId, artist, album, song};
-    db.data.push_back(newRow);
-    db.artistIndex[artist].push_back(newIndex);
-    db.songIndex[song].push_back(newIndex);
-    db.albumIndex[album].push_back(newIndex);
-    db.artistTrie.insert(artist);
-    db.songTrie.insert(song);
-    db.albumTrie.insert(album);
-    saveToCSV("dataset.csv", db);
+  int newIndex = db.data.size();
+  string newId = to_string(newIndex);
 
-    cout << "Song added successfully!\n";
+  vector<string> newRow = {newId, artist, album, song, genre};
+  db.data.push_back(newRow);
+  db.artistIndex[artist].push_back(newIndex);
+  db.songIndex[song].push_back(newIndex);
+  db.albumIndex[album].push_back(newIndex);
+  db.artistTrie.insert(artist);
+  db.songTrie.insert(song);
+  db.albumTrie.insert(album);
+  saveToCSV("dataset.csv", db);
+
+  cout << "Song added successfully!\n";
 }
 
 int main() {
