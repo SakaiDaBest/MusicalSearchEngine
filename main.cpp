@@ -292,6 +292,27 @@ SearchDB readCSV(const string &filename) {
   return db;
 }
 
+void saveToCSV(const string &filename, SearchDB &db) {
+  ofstream file(filename);
+
+  if (!file.is_open()) {
+    cout << "Error saving file!\n";
+    return;
+  }
+  for (int i = 0; i < db.data.size(); i++) {
+    if (db.data[i][1] == "DELETED" || db.data[i][2] == "DELETED" ||
+        db.data[i][3] == "DELETED")
+      continue;
+    for (int j = 0; j < db.data[i].size(); j++) {
+      file << db.data[i][j];
+      if (j != db.data[i].size() - 1)
+        file << ",";
+    }
+    file << "\n";
+  }
+  file.close();
+}
+
 vector<int> multiKeywordSearch(SearchDB &db, string query) {
   vector<int> rsult;
 
@@ -426,27 +447,21 @@ void edit(SearchDB &db) {
     cout << "Multiple songs found with that name. Please select one:" << endl;
     for (int i = 0; i < (int)matchingRows.size(); i++) {
       int r = matchingRows[i];
-      cout << i + 1 << ". Song: " << db.data[r][3] << "\n";
-      cout << "   Artist: " << db.data[r][1] << "\n";
-      cout << "   Album: " << db.data[r][2] << "\n";
+      cout << i + 1 << ". Song: " << db.data[r][3] << "\n"
+           << "   Artist: " << db.data[r][1] << "\n"
+           << "   Album: " << db.data[r][2] << "\n";
     }
     cout << "Enter the number of the song you want to edit: ";
     int choiceE1;
     cin >> choiceE1;
     cin.ignore();
-
     if (choiceE1 < 1 || choiceE1 > (int)matchingRows.size()) {
       cout << "Invalid choice. Exiting edit mode." << endl;
       return;
     }
     selectedRow = matchingRows[choiceE1 - 1];
-  } else if (matchingRows.size() == 1) {
+  } else {
     selectedRow = matchingRows[0];
-  }
-
-  if (selectedRow == -1) {
-    cout << "No valid song selected." << endl;
-    return;
   }
 
   cout << "== What do you want to edit? ==" << endl;
@@ -462,12 +477,12 @@ void edit(SearchDB &db) {
   }
 
   if (choiceE2 == 1) {
-    string oldSong = db.data[selectedRow][4];
+    string oldSong = db.data[selectedRow][3]; // fix: was [4]
     cout << "Enter the new song name: ";
     string newSong;
     getline(cin, newSong);
 
-    db.data[selectedRow][4] = newSong;
+    db.data[selectedRow][3] = newSong; // fix: was [4]
 
     vector<int> &oldVec = db.songIndex[oldSong];
     oldVec.erase(remove(oldVec.begin(), oldVec.end(), selectedRow),
@@ -476,14 +491,16 @@ void edit(SearchDB &db) {
       db.songIndex.erase(oldSong);
 
     db.songIndex[newSong].push_back(selectedRow);
+    db.songTrie.remove(oldSong); // fix: trie update
+    db.songTrie.insert(newSong);
 
   } else if (choiceE2 == 2) {
-    string oldArtist = db.data[selectedRow][2];
+    string oldArtist = db.data[selectedRow][1]; // fix: was [2]
     cout << "Enter the new artist name: ";
     string newArtist;
     getline(cin, newArtist);
 
-    db.data[selectedRow][2] = newArtist;
+    db.data[selectedRow][1] = newArtist; // fix: was [2]
 
     vector<int> &oldVec = db.artistIndex[oldArtist];
     oldVec.erase(remove(oldVec.begin(), oldVec.end(), selectedRow),
@@ -492,14 +509,16 @@ void edit(SearchDB &db) {
       db.artistIndex.erase(oldArtist);
 
     db.artistIndex[newArtist].push_back(selectedRow);
+    db.artistTrie.remove(oldArtist); // fix: trie update
+    db.artistTrie.insert(newArtist);
 
   } else if (choiceE2 == 3) {
-    string oldAlbum = db.data[selectedRow][3];
+    string oldAlbum = db.data[selectedRow][2]; // fix: was [3]
     cout << "Enter the new album name: ";
     string newAlbum;
     getline(cin, newAlbum);
 
-    db.data[selectedRow][3] = newAlbum;
+    db.data[selectedRow][2] = newAlbum; // fix: was [3]
 
     vector<int> &oldVec = db.albumIndex[oldAlbum];
     oldVec.erase(remove(oldVec.begin(), oldVec.end(), selectedRow),
@@ -508,11 +527,13 @@ void edit(SearchDB &db) {
       db.albumIndex.erase(oldAlbum);
 
     db.albumIndex[newAlbum].push_back(selectedRow);
+    db.albumTrie.remove(oldAlbum); // fix: trie update
+    db.albumTrie.insert(newAlbum);
   }
 
+  saveToCSV("dataset.csv", db); // fix: persist changes
   cout << "Edit successful!" << endl;
 }
-
 void deleteArtist(SearchDB &db) {
   cout << "Enter the artist name to delete: ";
   string artist;
@@ -570,7 +591,7 @@ void deleteArtist(SearchDB &db) {
 
   db.artistIndex.erase(artist);
   db.artistTrie.remove(artist);
-
+  saveToCSV("dataset.csv", db);
   cout << "Artist deleted successfully.\n";
 }
 
@@ -647,7 +668,7 @@ void deleteSong(SearchDB &db) {
     db.artistIndex.erase(artist);
 
   db.songTrie.remove(song);
-
+  saveToCSV("dataset.csv", db);
   cout << "Song deleted successfully.\n";
 }
 
@@ -707,7 +728,7 @@ void deleteAlbum(SearchDB &db) {
 
   db.albumIndex.erase(album);
   db.albumTrie.remove(album);
-
+  saveToCSV("dataset.csv", db);
   cout << "Album deleted successfully.\n";
 }
 int main() {
@@ -860,8 +881,6 @@ int main() {
       cout << "Invalid choice. Please try again." << endl;
     }
   }
-
-  return 0;
 }
 // int main() {
 //   SearchDB db;
