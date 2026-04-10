@@ -731,6 +731,37 @@ void deleteAlbum(SearchDB &db) {
   saveToCSV("dataset.csv", db);
   cout << "Album deleted successfully.\n";
 }
+
+void addSong(SearchDB &db) {
+    cout << "======= Add Song =======" << endl;
+
+    string artist, album, song;
+
+    cout << "Enter artist name: ";
+    getline(cin, artist);
+
+    cout << "Enter album name: ";
+    getline(cin, album);
+
+    cout << "Enter song name: ";
+    getline(cin, song);
+
+    int newIndex = db.data.size();
+    string newId = to_string(newIndex);  
+
+    vector<string> newRow = {newId, artist, album, song};
+    db.data.push_back(newRow);
+    db.artistIndex[artist].push_back(newIndex);
+    db.songIndex[song].push_back(newIndex);
+    db.albumIndex[album].push_back(newIndex);
+    db.artistTrie.insert(artist);
+    db.songTrie.insert(song);
+    db.albumTrie.insert(album);
+    saveToCSV("dataset.csv", db);
+
+    cout << "Song added successfully!\n";
+}
+
 int main() {
   SearchDB db;
 
@@ -851,7 +882,7 @@ int main() {
     }
     case 2:
       // call add function
-      cout << "Add feature coming soon..." << endl;
+      addSong(db);
       break;
     case 3: {
       cout << "What do you want to delete? (song/album/artist): ";
