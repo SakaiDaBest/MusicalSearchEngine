@@ -2,45 +2,58 @@
 #include <climits>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <string>
 #include <vector>
-// #include <unordered_map>
-using namespace std;
-template <class S, class T>
 
-class unordered_map {
+using namespace std;
+
+// UNORDERED_MAP IMPLEMENTATION
+// This is a custom hash map using linked lists to handle collisions.
+template <class S, class T> class unordered_map {
 public:
+  // Node structure for the linked list to handle hash collisions
   struct ll {
     S key;
     T value;
     ll *next;
   };
+
+  // Fixed size array of pointers to the linked list nodes
   ll *arr[100000];
+
+  // Constructor initializes all pointers to NULL
   unordered_map() {
     for (int i = 0; i < 100000; i++)
       arr[i] = NULL;
   }
+
+  // Inserts a new key-value pair or updates the value if the key already exists
   void insert(S key, T value) {
-    int h = hash(key);
+    int h = hash(key); // Calculate hash bucket index
     if (arr[h] == NULL) {
+      // If bucket is empty, create the first node
       ll *p = new ll{key, value, NULL};
       arr[h] = p;
     } else {
+      // Traverse the linked list to find an existing key or append to the end
       ll *q = arr[h];
       while (true) {
         if (q->key == key) {
-          q->value = value;
+          q->value = value; // Update value if key is found
           return;
         }
         if (q->next == NULL)
           break;
         q = q->next;
       }
+      // Append new node at the end of the chain
       q->next = new ll{key, value, NULL};
     }
   }
 
+  // Removes a key-value pair from the map
   void erase(S key) {
     int h = hash(key);
     ll *p = arr[h];
@@ -48,12 +61,14 @@ public:
 
     while (p != NULL) {
       if (p->key == key) {
+        // If it's the first node in the bucket
         if (prev == NULL)
           arr[h] = p->next;
+        // If it's in the middle or end
         else
           prev->next = p->next;
 
-        delete p;
+        delete p; // Free memory
         return;
       }
       prev = p;
@@ -61,19 +76,24 @@ public:
     }
   }
 
+  // Polynomial rolling hash function to convert a key into an integer index (0
+  // to 99999)
   int hash(S key) {
     long long h = 0;
     ostringstream os;
     os << key;
-    string key1 = os.str();
+    string key1 = os.str(); // Convert key to string
     long long m = 1;
+    // Iterate through string characters to compute hash
     for (int i = 0; i < int(key1.size()); i++) {
       h += int(key1[i]) * m;
       h = h % 100000;
-      m = (m * 17) % 100000;
+      m = (m * 17) % 100000; // Multiplier to reduce collisions
     }
     return (int)h;
   }
+
+  // Checks if a key exists in the map
   bool find(S key) {
     int h = hash(key);
     if (arr[h] == NULL)
@@ -86,14 +106,19 @@ public:
     }
     return false;
   }
+
+  // Overloads the [] operator for easy access and insertion (e.g., map["key"] =
+  // value)
   T &operator[](S key) {
     int h = hash(key);
     ll *p = arr[h];
     while (p != NULL) {
       if (p->key == key)
-        return p->value;
+        return p->value; // Return reference if found
       p = p->next;
     }
+    // If key is not found, insert a default-constructed value and return its
+    // reference
     insert(key, T{});
     p = arr[h];
     while (p != NULL) {
@@ -105,6 +130,7 @@ public:
     return default_value;
   }
 };
+
 // LEVENSHTEIN DISTANCE (DID YOU MEAN?)
 int levenshteinDist(string word1, string word2) {
   int size1 = word1.size();
@@ -134,9 +160,10 @@ int levenshteinDist(string word1, string word2) {
   return verif[size1][size2];
 }
 
+// Trie Node for Autocomplete
 struct TrieNode {
-  TrieNode *children[26]; // 26 pointers
-  bool isEnd;             // check if this node is the end of a word
+  TrieNode *children[26];
+  bool isEnd;
   string word;
 
   TrieNode() {
@@ -146,47 +173,43 @@ struct TrieNode {
       children[i] = NULL;
   }
 };
-class Trie { // stores a word into the trie by building paths
+
+// Trie implementation
+class Trie {
 public:
-  TrieNode *root; // starting point of trie
+  TrieNode *root;
 
-  Trie() {
-    root = new TrieNode(); // create root node when trie starts
-  }
-  void insert(string s) {  // to store words into trie
-    TrieNode *node = root; // start from root
+  Trie() { root = new TrieNode(); }
+  void insert(string s) {
+    TrieNode *node = root;
 
-    for (char c : s) { // loop through each char
+    for (char c : s) {
       if (!isalpha(c))
         continue;
       c = tolower(c);
 
       int index = c - 'a';
 
-      if (node->children[index] == NULL)        // exists?
-        node->children[index] = new TrieNode(); // letter does not exit,create
-                                                // it
+      if (node->children[index] == NULL)
+        node->children[index] = new TrieNode();
 
-      node = node->children[index]; // move to next node
+      node = node->children[index];
     }
-    node->isEnd = true; // mark the last word down
-    node->word = s;     // store full word for output(without this only know
-                        // letters)
+    node->isEnd = true;
+    node->word = s;
   }
-  void dfs(TrieNode *node,
-           vector<string> &result) { // collects all words from the trie
+  void dfs(TrieNode *node, vector<string> &result) {
     if (node == NULL)
       return;
 
     if (node->isEnd)
-      result.push_back(node->word); // complete? add to result
+      result.push_back(node->word);
 
     for (int i = 0; i < 26; i++)
-      dfs(node->children[i], result); // go through can explore every possible
-                                      // word under this node?
+      dfs(node->children[i], result);
   }
-  vector<string> autocomplete(string prefix) { // return all word match prefix
-    TrieNode *node = root; // every search starts from begining
+  vector<string> autocomplete(string prefix) {
+    TrieNode *node = root;
 
     for (char c : prefix) {
       if (!isalpha(c))
@@ -196,12 +219,12 @@ public:
       int index = c - 'a';
 
       if (node->children[index] == NULL)
-        return {}; // if path doesnt exist no suggestion
+        return {};
 
-      node = node->children[index]; // move doen the tree
+      node = node->children[index];
     }
-    vector<string> result; // store suggestion
-    dfs(node, result);     // ex:prefix ca then find all words starting from ca
+    vector<string> result;
+    dfs(node, result);
     return result;
   }
 
@@ -220,7 +243,7 @@ public:
     }
     int index = tolower(word[depth]) - 'a';
     if (index < 0 || index >= 26)
-      return false; // guard non-alpha chars
+      return false;
     if (removeThese(node->children[index], word, depth + 1)) {
       delete node->children[index];
       node->children[index] = NULL;
@@ -237,24 +260,31 @@ public:
   void remove(string word) { removeThese(root, word, 0); }
 };
 
+// ==========================================
+// INDEXING STRUCTURES & LOGIC
+// ==========================================
+
+// Struct holding the core dataset and its optimized lookup structures
 struct SearchDB {
+  // Master list of all rows read from the CSV
   vector<vector<string>> data;
+
+  // Inverted Indices: Maps a specific string (artist/song/album name) to a list
+  // of row numbers in `data`. Using the custom unordered_map for O(1) average
+  // lookup time.
   unordered_map<string, vector<int>> artistIndex;
   unordered_map<string, vector<int>> songIndex;
   unordered_map<string, vector<int>> albumIndex;
 
+  // Tries used for autocomplete functionality (finding strings by prefix)
   Trie artistTrie;
   Trie songTrie;
   Trie albumTrie;
 };
 
+// Populates the database and builds the indices from the CSV file
 SearchDB readCSV(const string &filename) {
   SearchDB db;
-  vector<vector<string>> data;
-  unordered_map<string, vector<int>> artistIndex;
-  unordered_map<string, vector<int>> songIndex;
-  unordered_map<string, vector<int>> albumIndex;
-
   ifstream file(filename);
 
   if (!file.is_open()) {
@@ -275,12 +305,17 @@ SearchDB readCSV(const string &filename) {
 
     db.data.push_back(row);
 
+    // Extract columns assuming format: ID, Artist, Album, Song, [Genre]
     string artist = row[1];
     string album = row[2];
     string song = row[3];
+
+    // Build the inverted indices: map the exact name to its row ID
     db.artistIndex[artist].push_back(currentLine);
     db.songIndex[song].push_back(currentLine);
     db.albumIndex[album].push_back(currentLine);
+
+    // Insert into tries for prefix matching (autocomplete)
     db.artistTrie.insert(artist);
     db.songTrie.insert(song);
     db.albumTrie.insert(album);
@@ -361,6 +396,7 @@ vector<int> smartSearch(SearchDB &db, string query) {
 
   return multiKeywordSearch(db, query);
 }
+
 // Levenshetein Search
 vector<int> levenshteinSearch(SearchDB &db, string query, int threshold = 2) {
   vector<int> result;
@@ -384,50 +420,68 @@ vector<int> levenshteinSearch(SearchDB &db, string query, int threshold = 2) {
   return result;
 }
 
+// ==========================================
+// SORTING FUNCTIONS (MERGE SORT)
+// ==========================================
+
+// Helper function to merge two sorted halves of index arrays
 void merge(vector<int> &indices, int left, int mid, int right, SearchDB &db,
            int col, bool ascending) {
+  // Copy data to temporary arrays L[] and R[]
   vector<int> L(indices.begin() + left, indices.begin() + mid + 1);
   vector<int> R(indices.begin() + mid + 1, indices.begin() + right + 1);
 
   int i = 0, j = 0, k = left;
+
+  // Merge the temp arrays back into indices[left..right]
   while (i < L.size() && j < R.size()) {
+    // Look up the actual string data from the DB using the index and target
+    // column
     string a = db.data[L[i]][col];
     string b = db.data[R[j]][col];
+
+    // Determine sort order condition based on boolean flag
     bool takeLeft = ascending ? (a <= b) : (a >= b);
+
     if (takeLeft)
       indices[k++] = L[i++];
     else
       indices[k++] = R[j++];
   }
+
+  // Copy any remaining elements of L[]
   while (i < L.size())
     indices[k++] = L[i++];
+
+  // Copy any remaining elements of R[]
   while (j < R.size())
     indices[k++] = R[j++];
 }
 
+// Recursive function to split the indices array and sort it using Merge Sort
 void mergeSort(vector<int> &indices, int left, int right, SearchDB &db, int col,
                bool ascending) {
   if (left >= right)
-    return;
+    return; // Base case: subarray size is 1
   int mid = (left + right) / 2;
+
+  // Recursively sort the left and right halves
   mergeSort(indices, left, mid, db, col, ascending);
   mergeSort(indices, mid + 1, right, db, col, ascending);
+
+  // Merge the sorted halves
   merge(indices, left, mid, right, db, col, ascending);
 }
 
-// LOOK AT THIS \/
-// col: 1=artist, 2=album, 3=song
+// Wrapper function to initiate the merge sort on query results
 void sortResults(vector<int> &indices, SearchDB &db, int col = 2,
                  bool ascending = true) {
   if (indices.empty())
     return;
+  // Note: We sort an array of `indices` (integers pointing to db.data rows)
+  // rather than shuffling the db.data rows themselves.
   mergeSort(indices, 0, indices.size() - 1, db, col, ascending);
 }
-
-// Example usage
-// sortResults(results, db, 2, true);   // A-Z by artist
-//  sortResults(results, db, 4, false);  // Z-A by song title
-//  sortResults(results, db, 3, true);   // A-Z by album
 
 void edit(SearchDB &db) {
   cout << "======= Edit Mode =======" << endl;
@@ -453,8 +507,15 @@ void edit(SearchDB &db) {
     }
     cout << "Enter the number of the song you want to edit: ";
     int choiceE1;
-    cin >> choiceE1;
-    cin.ignore();
+
+    if (!(cin >> choiceE1)) {
+      cout << "Invalid input. Exiting edit mode." << endl;
+      cin.clear();
+      cin.ignore(numeric_limits<streamsize>::max(), '\n');
+      return;
+    }
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
     if (choiceE1 < 1 || choiceE1 > (int)matchingRows.size()) {
       cout << "Invalid choice. Exiting edit mode." << endl;
       return;
@@ -468,8 +529,14 @@ void edit(SearchDB &db) {
   cout << "1. Song\n2. Artist\n3. Album\n";
   cout << "Enter your choice: ";
   int choiceE2;
-  cin >> choiceE2;
-  cin.ignore();
+
+  if (!(cin >> choiceE2)) {
+    cout << "Invalid input. Exiting..." << endl;
+    cin.clear();
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    return;
+  }
+  cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
   if (choiceE2 < 1 || choiceE2 > 3) {
     cout << "Invalid choice. Exiting..." << endl;
@@ -477,12 +544,12 @@ void edit(SearchDB &db) {
   }
 
   if (choiceE2 == 1) {
-    string oldSong = db.data[selectedRow][3]; // fix: was [4]
+    string oldSong = db.data[selectedRow][3];
     cout << "Enter the new song name: ";
     string newSong;
     getline(cin, newSong);
 
-    db.data[selectedRow][3] = newSong; // fix: was [4]
+    db.data[selectedRow][3] = newSong;
 
     vector<int> &oldVec = db.songIndex[oldSong];
     oldVec.erase(remove(oldVec.begin(), oldVec.end(), selectedRow),
@@ -491,16 +558,16 @@ void edit(SearchDB &db) {
       db.songIndex.erase(oldSong);
 
     db.songIndex[newSong].push_back(selectedRow);
-    db.songTrie.remove(oldSong); // fix: trie update
+    db.songTrie.remove(oldSong);
     db.songTrie.insert(newSong);
 
   } else if (choiceE2 == 2) {
-    string oldArtist = db.data[selectedRow][1]; // fix: was [2]
+    string oldArtist = db.data[selectedRow][1];
     cout << "Enter the new artist name: ";
     string newArtist;
     getline(cin, newArtist);
 
-    db.data[selectedRow][1] = newArtist; // fix: was [2]
+    db.data[selectedRow][1] = newArtist;
 
     vector<int> &oldVec = db.artistIndex[oldArtist];
     oldVec.erase(remove(oldVec.begin(), oldVec.end(), selectedRow),
@@ -509,16 +576,16 @@ void edit(SearchDB &db) {
       db.artistIndex.erase(oldArtist);
 
     db.artistIndex[newArtist].push_back(selectedRow);
-    db.artistTrie.remove(oldArtist); // fix: trie update
+    db.artistTrie.remove(oldArtist);
     db.artistTrie.insert(newArtist);
 
   } else if (choiceE2 == 3) {
-    string oldAlbum = db.data[selectedRow][2]; // fix: was [3]
+    string oldAlbum = db.data[selectedRow][2];
     cout << "Enter the new album name: ";
     string newAlbum;
     getline(cin, newAlbum);
 
-    db.data[selectedRow][2] = newAlbum; // fix: was [3]
+    db.data[selectedRow][2] = newAlbum;
 
     vector<int> &oldVec = db.albumIndex[oldAlbum];
     oldVec.erase(remove(oldVec.begin(), oldVec.end(), selectedRow),
@@ -527,13 +594,14 @@ void edit(SearchDB &db) {
       db.albumIndex.erase(oldAlbum);
 
     db.albumIndex[newAlbum].push_back(selectedRow);
-    db.albumTrie.remove(oldAlbum); // fix: trie update
+    db.albumTrie.remove(oldAlbum);
     db.albumTrie.insert(newAlbum);
   }
 
-  saveToCSV("dataset.csv", db); // fix: persist changes
+  saveToCSV("dataset.csv", db);
   cout << "Edit successful!" << endl;
 }
+
 void deleteArtist(SearchDB &db) {
   cout << "Enter the artist name to delete: ";
   string artist;
@@ -563,7 +631,7 @@ void deleteArtist(SearchDB &db) {
   cout << "Confirm delete ALL songs by \"" << artist << "\"? (yes/no): ";
   string confirm;
   cin >> confirm;
-  cin.ignore();
+  cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
   if (confirm != "yes") {
     cout << "Delete cancelled.\n";
@@ -577,7 +645,6 @@ void deleteArtist(SearchDB &db) {
     db.data[i][1] = "DELETED";
     db.data[i][3] = "DELETED";
 
-    // Remove this row from songIndex
     vector<int> &sv = db.songIndex[song];
     sv.erase(remove(sv.begin(), sv.end(), i), sv.end());
     if (sv.empty())
@@ -628,8 +695,15 @@ void deleteSong(SearchDB &db) {
   } else {
     cout << "Enter the number of the song to delete: ";
     int pick;
-    cin >> pick;
-    cin.ignore();
+
+    if (!(cin >> pick)) {
+      cout << "Invalid choice. Cancelled.\n";
+      cin.clear();
+      cin.ignore(numeric_limits<streamsize>::max(), '\n');
+      return;
+    }
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
     if (pick < 1 || pick > (int)validRows.size()) {
       cout << "Invalid choice.\n";
       return;
@@ -640,7 +714,7 @@ void deleteSong(SearchDB &db) {
   cout << "Confirm delete \"" << db.data[selected][3] << "\"? (yes/no): ";
   string confirm;
   cin >> confirm;
-  cin.ignore();
+  cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
   if (confirm != "yes") {
     cout << "Delete cancelled.\n";
@@ -701,7 +775,7 @@ void deleteAlbum(SearchDB &db) {
   cout << "Confirm delete ALL songs in album \"" << album << "\"? (yes/no): ";
   string confirm;
   cin >> confirm;
-  cin.ignore();
+  cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
   if (confirm != "yes") {
     cout << "Delete cancelled.\n";
@@ -731,11 +805,7 @@ void deleteAlbum(SearchDB &db) {
   saveToCSV("dataset.csv", db);
   cout << "Album deleted successfully.\n";
 }
-// Check------------------------------------------
-//                                               |
-//                                               V
-//=====================================ADD
-// SONG==================================================================
+
 void addSong(SearchDB &db) {
   cout << "======= Add Song =======" << endl;
 
@@ -769,15 +839,21 @@ void addSong(SearchDB &db) {
   cout << "Song added successfully!\n";
 }
 
+// ==========================================
+// MAIN FUNCTION (ENTRY POINT & CLI LOOP)
+// ==========================================
 int main() {
   SearchDB db;
 
+  // Initial load: parse the CSV file and build up the tries/indices in memory
   db = readCSV("dataset.csv");
   if (db.data.empty()) {
     cout << "Error: dataset cannot be loaded." << endl;
     return 1;
   }
+
   int choice;
+  // Infinite loop for the Command Line Interface (CLI) menu
   while (true) {
     cout << "\nDataset is loaded successfully! It's ready to use." << endl;
     cout << "======= Welcome to Loz Music Search Engine =======" << endl;
@@ -787,17 +863,27 @@ int main() {
     cout << "4. Edit Song/Artist/Album" << endl;
     cout << "5. Exit..." << endl;
     cout << "Enter your choice: ";
-    cin >> choice;
-    cin.ignore();
+
+    // Handle string inputs for numeric menu to prevent infinite loop errors
+    if (!(cin >> choice)) {
+      cout << "Invalid input. Please enter a valid number." << endl;
+      cin.clear();
+      cin.ignore(numeric_limits<streamsize>::max(), '\n');
+      continue;
+    }
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
     switch (choice) {
     case 1: {
+      // --- Search Flow ---
       cout << "======= Search Mode =======" << endl;
       cout << "Enter your search query: ";
       string query;
       getline(cin, query);
 
       // 1. Autocomplete Suggestions (using Trie)
+      // Provides "typeahead" hints based on the artist names that match the
+      // query prefix
       vector<string> suggestions = db.artistTrie.autocomplete(query);
       if (!suggestions.empty()) {
         cout << "\n[Tip] Artist Autocomplete Suggestions:" << endl;
@@ -805,6 +891,7 @@ int main() {
         for (const auto &s : suggestions) {
           cout << " -> " << s << endl;
           c++;
+          // Cap suggestions at 5, hide the rest
           if (c == 5 && suggestions.size() > c) {
             cout << "\nThere are " << suggestions.size() - c
                  << " more suggestions that are hidden" << endl;
@@ -814,18 +901,22 @@ int main() {
       }
 
       // 2. Exact & Multi-Keyword Search
+      // Uses the O(1) hash maps to find exact term matches quickly
       vector<int> results = smartSearch(db, query);
 
       // 3. Did you mean? (Levenshtein search fallback)
+      // If exact matches yield no results, use edit distance to find typos
       if (results.empty()) {
         cout << "\nNo exact match found. Searching for 'Did you mean?' "
                 "alternatives..."
              << endl;
-        results = levenshteinSearch(db, query, 2); // Threshold set to 2 edits
+        // Search the DB allowing up to 2 typos (insertions, deletions,
+        // mutations)
+        results = levenshteinSearch(db, query, 2);
 
         if (results.empty()) {
           cout << "No close matches found either.\n" << endl;
-          break; // Return to main menu
+          break;
         } else {
           cout << "Did you mean?..." << endl;
         }
@@ -833,13 +924,15 @@ int main() {
         cout << "\nMatch(es) found!" << endl;
       }
 
-      // Print the unsorted results
+      // Print the raw (unsorted) search results mapped from their row indices
       cout << "\n--- Search Results ---" << endl;
       for (int i = 0; i < (int)results.size(); i++) {
-        int r = results[i];
+        int r = results[i]; // Get actual row index
         cout << i + 1 << ". Song: " << db.data[r][3]
              << " | Artist: " << db.data[r][1] << " | Album: " << db.data[r][2]
              << endl;
+
+        // Cap results printing to top 5 if it was a fuzzy match lookup
         if (i == 5 && results.size() > i) {
           cout << "\nThere are " << results.size() - i
                << " more 'Did You Mean?' that are hidden" << endl;
@@ -848,6 +941,7 @@ int main() {
       }
 
       // 4. Sorting Functionality
+      // After retrieving results, optionally re-order them dynamically
       if (!results.empty()) {
         cout << "\nDo you want to sort these results? (y/n): ";
         string sortChoice;
@@ -856,15 +950,28 @@ int main() {
         if (sortChoice == "y" || sortChoice == "Y") {
           cout << "Sort by (1=Artist, 2=Album, 3=Song): ";
           int colChoice;
-          cin >> colChoice;
+
+          if (!(cin >> colChoice)) {
+            cout << "Invalid input. Skipping sort." << endl;
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            break;
+          }
 
           cout << "Order (1=Ascending A-Z, 2=Descending Z-A): ";
           int orderChoice;
-          cin >> orderChoice;
-          cin.ignore(); // Clear the newline character from the buffer
 
-          // Map the user's choice to the correct column index based on readCSV
-          int col = 3; // Default to Song
+          if (!(cin >> orderChoice)) {
+            cout << "Invalid input. Skipping sort." << endl;
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            break;
+          }
+          cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+          // Map choice integer back to the correct CSV column index (0=ID,
+          // 1=Artist, 2=Album, 3=Song)
+          int col = 3;
           if (colChoice == 1)
             col = 1;
           else if (colChoice == 2)
@@ -872,10 +979,11 @@ int main() {
 
           bool ascending = (orderChoice == 1);
 
-          // Call your custom Merge Sort
+          // Apply Merge Sort to the array of matched integer IDs based on the
+          // selected column text
           sortResults(results, db, col, ascending);
 
-          // Print the sorted results
+          // Print freshly sorted output
           cout << "\n--- Sorted Results ---" << endl;
           for (int i = 0; i < (int)results.size(); i++) {
             int r = results[i];
@@ -888,14 +996,14 @@ int main() {
       break;
     }
     case 2:
-      // call add function
-      addSong(db);
+      addSong(db); // Branches to insertion logic
       break;
     case 3: {
+      // Cascading deletion branches depending on user target scope
       cout << "What do you want to delete? (song/album/artist): ";
       string delType;
       cin >> delType;
-      cin.ignore();
+      cin.ignore(numeric_limits<streamsize>::max(), '\n');
       for (char &c : delType)
         c = tolower(c);
 
@@ -910,9 +1018,10 @@ int main() {
       break;
     }
     case 4:
-      edit(db);
+      edit(db); // Branches to update logic
       break;
     case 5:
+      // Graceful termination
       cout << "Exiting... Goodbye!" << endl;
       return 0;
     default:
@@ -920,84 +1029,3 @@ int main() {
     }
   }
 }
-// int main() {
-//   SearchDB db;
-//
-//   db = readCSV("dataset.csv");
-//
-//   cout << string(50, '=') << "\n";
-//   cout << " FEATURE 1: AUTOCOMPLETE SUGGESTIONS (TRIE)\n";
-//   cout << string(50, '=') << "\n";
-//
-//   // Example 1: User starts typing "Ta" for an artist
-//   string prefix = "Ta";
-//   cout << "User is typing artist name: '" << prefix << "'\n";
-//
-//   vector<string> suggestions = db.artistTrie.autocomplete(prefix);
-//
-//   if (suggestions.empty()) {
-//     cout << "No suggestions found.\n";
-//   } else {
-//     cout << "Autocomplete Suggestions:\n";
-//     for (const auto &s : suggestions) {
-//       cout << " -> " << s << "\n";
-//     }
-//   }
-//
-//   cout << "\n" << string(50, '=') << "\n";
-//   cout << " FEATURE 2: DID YOU MEAN? (LEVENSHTEIN)\n";
-//   cout << string(50, '=') << "\n";
-//
-//   // Example 2: User makes a typo while searching
-//   string typoQuery = "Ed Sheran"; // Missing an 'e'
-//   cout << "User hit 'Enter' searching for: '" << typoQuery << "'\n";
-//
-//   // First, check if exact match exists using your smartSearch
-//   vector<int> results = smartSearch(db, typoQuery);
-//
-//   if (results.empty()) {
-//     cout << "\nNo exact match found. Searching for 'Did you mean?' "
-//             "alternatives...\n";
-//
-//     // Use Levenshtein to find close matches (Threshold of 2 edits)
-//     results = levenshteinSearch(db, typoQuery, 2);
-//
-//     if (results.empty()) {
-//       cout << "No close matches found.\n";
-//     } else {
-//       cout << "Did you mean??...\n";
-//       for (int i : results) {
-//         // Print out the Artist, Album, and Song for the corrected result
-//         cout << " -> Artist: " << db.data[i][2] << " | Album: " <<
-//         db.data[i][3]
-//              << " | Song: " << db.data[i][4] << "\n";
-//       }
-//     }
-//   } else {
-//     cout << "Exact match found!\n";
-//   }
-//
-//   cout << "\n" << string(50, '=') << "\n";
-//   cout << " FEATURE 3: ANOTHER TYPO EXAMPLE\n";
-//   cout << string(50, '=') << "\n";
-//
-//   string typoQuery2 = "Taylr Swft"; // Missing 'o' and 'i'
-//   cout << "User searched for: '" << typoQuery2 << "'\n";
-//
-//   results = smartSearch(db, typoQuery2);
-//   if (results.empty()) {
-//     results = levenshteinSearch(
-//         db, typoQuery2, 3); // Slightly higher threshold for 2 missing
-//         letters
-//     if (!results.empty()) {
-//       cout << "Did you mean??...\n";
-//       for (int i : results) {
-//         cout << " -> Artist: " << db.data[i][2] << " | Album: " <<
-//         db.data[i][3]
-//              << " | Song: " << db.data[i][4] << "\n";
-//       }
-//     }
-//   }
-//
-//   return 0;
-// }
