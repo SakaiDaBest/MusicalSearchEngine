@@ -731,7 +731,10 @@ void deleteAlbum(SearchDB &db) {
   saveToCSV("dataset.csv", db);
   cout << "Album deleted successfully.\n";
 }
-
+//Check------------------------------------------
+//                                              |
+//                                              V
+//=====================================ADD SONG==================================================================
 void addSong(SearchDB &db) {
     cout << "======= Add Song =======" << endl;
 
