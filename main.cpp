@@ -330,15 +330,15 @@ SearchDB readCSV(const string &filename) {
 void saveToCSV(const string &filename, SearchDB &db) {
   ofstream file(filename);
 
-  if (!file.is_open()) {
+  if (!file.is_open()) {// if unable to open file for whatever reason
     cout << "Error saving file!\n";
     return;
   }
-  for (int i = 0; i < db.data.size(); i++) {
+  for (int i = 0; i < db.data.size(); i++) { //skip over deleted files
     if (db.data[i][1] == "DELETED" || db.data[i][2] == "DELETED" ||
         db.data[i][3] == "DELETED")
       continue;
-    for (int j = 0; j < db.data[i].size(); j++) {
+    for (int j = 0; j < db.data[i].size(); j++) {//inserts new data
       file << db.data[i][j];
       if (j != db.data[i].size() - 1)
         file << ",";
