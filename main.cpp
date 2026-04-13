@@ -162,15 +162,15 @@ int levenshteinDist(string word1, string word2) {
 
 // Trie Node for Autocomplete
 struct TrieNode {
-  TrieNode *children[26];
+  TrieNode *children[26]; //array of 26 pointers
   bool isEnd;
   string word;
 
   TrieNode() {
     isEnd = false;
-    word = "";
+    word = ""; //no word ends initially,empty string
     for (int i = 0; i < 26; i++)
-      children[i] = NULL;
+      children[i] = NULL;//no connections yet, all pointers starts as NULL
   }
 };
 
@@ -180,25 +180,25 @@ public:
   TrieNode *root;
 
   Trie() { root = new TrieNode(); }
-  void insert(string s) {
+  void insert(string s) { //insert a wword into the trie
     TrieNode *node = root;
 
     for (char c : s) {
-      if (!isalpha(c))
+      if (!isalpha(c))//ignore invalid char
         continue;
       c = tolower(c);
 
       int index = c - 'a';
 
       if (node->children[index] == NULL)
-        node->children[index] = new TrieNode();
+        node->children[index] = new TrieNode(); //create node if needed
 
       node = node->children[index];
     }
     node->isEnd = true;
-    node->word = s;
+    node->word = s;//mark end of word
   }
-  void dfs(TrieNode *node, vector<string> &result) {
+  void dfs(TrieNode *node, vector<string> &result) { //collect all words under a node (used in autocomplete)
     if (node == NULL)
       return;
 
@@ -208,24 +208,24 @@ public:
     for (int i = 0; i < 26; i++)
       dfs(node->children[i], result);
   }
-  vector<string> autocomplete(string prefix) {
+  vector<string> autocomplete(string prefix) { //return all words in the trie that start with a given prefix
     TrieNode *node = root;
 
-    for (char c : prefix) {
-      if (!isalpha(c))
+    for (char c : prefix) { //loop through each character od the prefix
+      if (!isalpha(c)) //skip non-alphabet characters (space/number)
         continue;
-      c = tolower(c);
+      c = tolower(c); //convertz 'a'->0, 'b'->1
 
       int index = c - 'a';
 
-      if (node->children[index] == NULL)
+      if (node->children[index] == NULL) //if no child then prefix does not exist in the TRIE
         return {};
 
       node = node->children[index];
     }
     vector<string> result;
     dfs(node, result);
-    return result;
+    return result; //once prefix node is reached, perform depth-first-search,collect all words under the node
   }
 
   bool removeThese(TrieNode *node, string word, int depth) {
@@ -233,28 +233,28 @@ public:
       return false;
     if (depth == (int)word.size()) {
       if (!node->isEnd)
-        return false;
+        return false; //if no marked as word then invalid deletion
       node->isEnd = false;
-      node->word = "";
+      node->word = ""; //remove word ending
       for (int i = 0; i < 26; i++)
         if (node->children[i] != NULL)
-          return false;
+          return false;//if node has childen then cannot delete node
       return true;
     }
     int index = tolower(word[depth]) - 'a';
-    if (index < 0 || index >= 26)
+    if (index < 0 || index >= 26)//invalid char check
       return false;
     if (removeThese(node->children[index], word, depth + 1)) {
       delete node->children[index];
-      node->children[index] = NULL;
+      node->children[index] = NULL;//remove unused child node
       if (node->isEnd)
-        return false;
+        return false;//if current node is end of another word then keep it
       for (int i = 0; i < 26; i++)
         if (node->children[i] != NULL)
           return false;
       return true;
     }
-    return false;
+    return false;//if has other childern cannot delete
   }
 
   void remove(string word) { removeThese(root, word, 0); }
@@ -349,15 +349,15 @@ void saveToCSV(const string &filename, SearchDB &db) {
 }
 
 vector<int> multiKeywordSearch(SearchDB &db, string query) {
-  vector<int> rsult;
+  vector<int> rsult; //stores the final filtered result
 
   stringstream ss(query);
-  string word;
+  string word; //split sentenc into words
 
   bool first = true;
 
-  while (ss >> word) {
-    vector<int> temp;
+  while (ss >> word) { //read one word at a time
+    vector<int> temp; //stores search result for one keyword only
 
     if (!db.artistIndex[word].empty())
       for (int x : db.artistIndex[word])
@@ -367,16 +367,16 @@ vector<int> multiKeywordSearch(SearchDB &db, string query) {
         temp.push_back(x);
     else if (!db.albumIndex[word].empty())
       for (int x : db.albumIndex[word])
-        temp.push_back(x);
+        temp.push_back(x); //copy all matching indices into temp
     if (first) {
       rsult = temp;
       first = false;
     } else {
-      vector<int> newResult;
+      vector<int> newResult; //for second keyword onward, find common elements
       for (int x : rsult) {
         for (int y : temp) {
           if (x == y) {
-            newResult.push_back(x);
+            newResult.push_back(x);//compare previous (rsult) and current keyword resuly (temp) keep only common values
           }
         }
       }
@@ -394,7 +394,7 @@ vector<int> smartSearch(SearchDB &db, string query) {
   if (!db.albumIndex[query].empty())
     return db.albumIndex[query];
 
-  return multiKeywordSearch(db, query);
+  return multiKeywordSearch(db, query); //if query not found then fallback into multikeywordsearch
 }
 
 // Levenshetein Search
@@ -607,20 +607,20 @@ void deleteArtist(SearchDB &db) {
   string artist;
   getline(cin, artist);
 
-  if (!db.artistIndex.find(artist)) {
+  if (!db.artistIndex.find(artist)) {//check if artist exists
     cout << "Artist not found.\n";
     return;
   }
 
-  vector<int> rows = db.artistIndex[artist];
-  vector<int> validRows;
+  vector<int> rows = db.artistIndex[artist];//all record of this artist
+  vector<int> validRows;//fitered (not deleted)
 
   cout << "\nSongs by this artist:\n";
   for (int i : rows) {
-    if (db.data[i][1] == "DELETED")
+    if (db.data[i][1] == "DELETED") //already deleted entries
       continue;
     cout << "  - " << db.data[i][3] << " (Album: " << db.data[i][2] << ")\n";
-    validRows.push_back(i);
+    validRows.push_back(i); //store valid rows
   }
 
   if (validRows.empty()) {
@@ -638,15 +638,15 @@ void deleteArtist(SearchDB &db) {
     return;
   }
 
-  for (int i : validRows) {
+  for (int i : validRows) {//loop through valid rows
     string song = db.data[i][3];
-    string album = db.data[i][2];
+    string album = db.data[i][2];//extract info
 
     db.data[i][1] = "DELETED";
     db.data[i][3] = "DELETED";
 
-    vector<int> &sv = db.songIndex[song];
-    sv.erase(remove(sv.begin(), sv.end(), i), sv.end());
+    vector<int> &sv = db.songIndex[song];//update song index
+    sv.erase(remove(sv.begin(), sv.end(), i), sv.end()); //remoe row index
     if (sv.empty())
       db.songIndex.erase(song);
 
