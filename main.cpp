@@ -418,7 +418,7 @@ vector<int> levenshteinSearch(SearchDB &db, string query, int threshold = 2) {
     string artist = db.data[i][1];
     string album = db.data[i][2];
     string song = db.data[i][3];
-
+    if (db.data[i][1] == "DELETED" || db.data[i][3] == "DELETED") continue;
     int d1 = levenshteinDist(query, artist);
     int d2 = levenshteinDist(query, album);
     int d3 = levenshteinDist(query, song);
