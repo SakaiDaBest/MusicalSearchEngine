@@ -489,14 +489,17 @@ void edit(SearchDB &db) {
   string songName;
   getline(cin, songName);
 
+  // Check if the song exists in the index before proceeding
   if (!db.songIndex.find(songName)) {
     cout << "Song not found." << endl;
     return;
   }
 
+  // Retrieve all row indices that match this song name
   vector<int> matchingRows = db.songIndex[songName];
   int selectedRow = -1;
 
+  // if founded multiple songs with same name, user insert which one they want to edit
   if (matchingRows.size() > 1) {
     cout << "Multiple songs found with that name. Please select one:" << endl;
     for (int i = 0; i < (int)matchingRows.size(); i++) {
@@ -508,14 +511,16 @@ void edit(SearchDB &db) {
     cout << "Enter the number of the song you want to edit: ";
     int choiceE1;
 
+    // Input Validation: Ensure the user enters a valid integer
     if (!(cin >> choiceE1)) {
       cout << "Invalid input. Exiting edit mode." << endl;
       cin.clear();
       cin.ignore(numeric_limits<streamsize>::max(), '\n');
       return;
     }
-    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');// Clear buffer after reading choiceE1 to prepare for future getlines
 
+    // Range Validation: Ensure the choice corresponds to an item in our list
     if (choiceE1 < 1 || choiceE1 > (int)matchingRows.size()) {
       cout << "Invalid choice. Exiting edit mode." << endl;
       return;
@@ -525,6 +530,7 @@ void edit(SearchDB &db) {
     selectedRow = matchingRows[0];
   }
 
+  //user choose which one they wanna edit
   cout << "== What do you want to edit? ==" << endl;
   cout << "1. Song\n2. Artist\n3. Album\n";
   cout << "Enter your choice: ";
@@ -538,6 +544,7 @@ void edit(SearchDB &db) {
   }
   cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
+  // if user enter invalid choice, then exit
   if (choiceE2 < 1 || choiceE2 > 3) {
     cout << "Invalid choice. Exiting..." << endl;
     return;
@@ -569,10 +576,11 @@ void edit(SearchDB &db) {
 
     db.data[selectedRow][1] = newArtist;
 
+    // --- Update Indices ---
     vector<int> &oldVec = db.artistIndex[oldArtist];
     oldVec.erase(remove(oldVec.begin(), oldVec.end(), selectedRow),
                  oldVec.end());
-    if (oldVec.empty())
+    if (oldVec.empty())// Clean up: If the old artist has no more songs, remove them from the map
       db.artistIndex.erase(oldArtist);
 
     db.artistIndex[newArtist].push_back(selectedRow);
@@ -585,6 +593,7 @@ void edit(SearchDB &db) {
     string newAlbum;
     getline(cin, newAlbum);
 
+    // Update the primary data store
     db.data[selectedRow][2] = newAlbum;
 
     vector<int> &oldVec = db.albumIndex[oldAlbum];
@@ -592,12 +601,13 @@ void edit(SearchDB &db) {
                  oldVec.end());
     if (oldVec.empty())
       db.albumIndex.erase(oldAlbum);
-
+    // Add row ID to the new artist's index and update search Trie
     db.albumIndex[newAlbum].push_back(selectedRow);
     db.albumTrie.remove(oldAlbum);
     db.albumTrie.insert(newAlbum);
   }
 
+  // for sync it to csv file
   saveToCSV("dataset.csv", db);
   cout << "Edit successful!" << endl;
 }
