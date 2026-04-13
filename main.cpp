@@ -137,7 +137,18 @@ public:
 int levenshteinDist(string word1, string word2) {
   int size1 = word1.size();
   int size2 = word2.size();
-
+// The 2D array `verif[i][j]` represents the minimum number of operations
+// required to convert the first `i` characters of word1 into the first `j`
+// characters of word2.
+//
+// For each character pair (word1[i-1], word2[j-1]):
+// - If the characters are the same, no operation is needed (cost = 0)
+// - If they are different, a substitution is needed (cost = 1)
+//
+// The value of verif[i][j] is determined by taking the minimum of:
+// 1. Deletion:    verif[i-1][j] + 1   (remove a character from word1)
+// 2. Insertion:   verif[i][j-1] + 1   (add a character to word1)
+// 3. Substitution: verif[i-1][j-1] + cost (replace character if different)
   vector<vector<int>> verif(size1 + 1, vector<int>(size2 + 1));
 
   if (size1 == 0)
@@ -819,6 +830,11 @@ void deleteAlbum(SearchDB &db) {
 }
 
 void addSong(SearchDB &db) {
+// 1. A new index is generated using db.data.size(), ensuring each song has a unique ID.
+// 2. The song details are stored as a row and appended to the main dataset (db.data).
+// 3. Multiple indices (artistIndex, songIndex, albumIndex) are updated to allow fast searching.
+// 4. Trie structures are updated to support efficient prefix-based search for artist, song, and album names.
+// 5. The updated database is saved to a CSV file for persistence.
   cout << "======= Add Song =======" << endl;
 
   string artist, album, song, genre;
