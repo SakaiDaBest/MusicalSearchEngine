@@ -12,6 +12,8 @@ using namespace std;
 //LOZ MUSIC SEARCH ENGINE
 
 // UNORDERED_MAP IMPLEMENTATION
+//Reference:
+//Laaksonen, A. (2017). Guide to Competitive Programming : Learning and Improving Algorithms Through Contests. Springer International Publishing Imprint : Springer.‌
 // This is a custom hash map using linked lists to handle collisions.
 template <class S, class T> class unordered_map {
 public:
@@ -273,10 +275,9 @@ public:
   void remove(string word) { removeThese(root, word, 0); }
 };
 
-// ==========================================
 // INDEXING STRUCTURES & LOGIC
-// ==========================================
-
+//References
+//GeeksforGeeks. (2016, March 24). Unordered Map in C++ STL. GeeksforGeeks. https://www.geeksforgeeks.org/cpp/unordered_map-in-cpp-stl/
 // Struct holding the core dataset and its optimized lookup structures
 struct SearchDB {
   // Master list of all rows read from the CSV
@@ -433,10 +434,7 @@ vector<int> levenshteinSearch(SearchDB &db, string query, int threshold = 2) {
   return result;
 }
 
-// ==========================================
 // SORTING FUNCTIONS (MERGE SORT)
-// ==========================================
-
 // Helper function to merge two sorted halves of index arrays
 void merge(vector<int> &indices, int left, int mid, int right, SearchDB &db,
            int col, bool ascending) {
